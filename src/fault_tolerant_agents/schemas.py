@@ -327,6 +327,19 @@ class FaultObservation(StrictModel):
         return self
 
 
+class ReliabilityAssessment(StrictModel):
+    assessment_id: Identifier
+    fault_event_id: Identifier
+    agent_id: Identifier
+    policy_version: ShortText
+    health_before: AgentHealthState
+    health_after: AgentHealthState
+    trust_before: AgentTrustState
+    trust_after: AgentTrustState
+    health_reason: ShortText
+    trust_reason: ShortText
+
+
 class RecoveryEvent(StrictModel):
     recovery_event_id: Identifier
     trigger_fault_event_id: Identifier
