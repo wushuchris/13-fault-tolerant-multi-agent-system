@@ -128,6 +128,11 @@ class ConsensusStatus(str, Enum):
     HUMAN_REVIEW_REQUIRED = "human_review_required"
 
 
+class RecoveryStatus(str, Enum):
+    RECOVERED = "recovered"
+    HUMAN_REVIEW_REQUIRED = "human_review_required"
+
+
 _ROLE_CAPABILITIES: dict[AgentRole, frozenset[Capability]] = {
     AgentRole.EVIDENCE: frozenset({Capability.EVIDENCE_REVIEW}),
     AgentRole.ANALYSIS: frozenset({Capability.IMPACT_ANALYSIS}),
@@ -386,6 +391,36 @@ class MissionState(StrictModel):
     quarantined_agent_ids: frozenset[Identifier] = frozenset()
     current_recommendation: MissionRecommendation | None = None
     current_step: int = Field(default=0, ge=0)
+
+
+class RecoveryResult(StrictModel):
+    recovery_id: Identifier
+    status: RecoveryStatus
+    assessment: ReliabilityAssessment
+    recovery_events: tuple[RecoveryEvent, ...] = Field(min_length=1)
+    recovery_work_products: tuple[WorkProduct, ...] = ()
+    accepted_work_product_ids: tuple[Identifier, ...] = ()
+    rejected_work_product_ids: tuple[Identifier, ...] = ()
+    quarantined_agent_ids: frozenset[Identifier] = frozenset()
+    health_after_recovery: AgentHealthState
+    trust_after_recovery: AgentTrustState
+    mission_state: MissionState
+
+    @model_validator(mode="after")
+    def recovery_state_is_consistent(self) -> "RecoveryResult":
+        if self.status is RecoveryStatus.RECOVERED:
+            if self.mission_state.status is not MissionStatus.ACTIVE:
+                raise ValueError("recovered result must return mission to ACTIVE")
+            if not self.accepted_work_product_ids:
+                raise ValueError("recovered result requires accepted work")
+        else:
+            if self.mission_state.status is not MissionStatus.HUMAN_REVIEW:
+                raise ValueError(
+                    "human-review recovery result must put mission in HUMAN_REVIEW"
+                )
+            if self.mission_state.current_recommendation is not None:
+                raise ValueError("human-review recovery cannot publish a recommendation")
+        return self
 
 
 class AuditEvent(StrictModel):
