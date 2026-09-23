@@ -423,6 +423,19 @@ class RecoveryResult(StrictModel):
         return self
 
 
+class ConsensusEvaluation(StrictModel):
+    policy_version: ShortText
+    consensus: ConsensusResult
+    mission_state: MissionState
+    winning_support_score: float = Field(ge=0.0)
+    runner_up_support_score: float = Field(ge=0.0)
+    required_support_score: float = Field(gt=0.0)
+    required_margin: float = Field(ge=0.0)
+    supporting_agent_ids: tuple[Identifier, ...] = ()
+    eligible_work_product_ids: tuple[Identifier, ...] = ()
+    excluded_work_product_ids: tuple[Identifier, ...] = ()
+
+
 class AuditEvent(StrictModel):
     audit_event_id: Identifier
     mission_id: Identifier
