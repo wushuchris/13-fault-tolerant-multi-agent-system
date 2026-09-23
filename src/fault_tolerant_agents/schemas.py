@@ -436,6 +436,40 @@ class ConsensusEvaluation(StrictModel):
     excluded_work_product_ids: tuple[Identifier, ...] = ()
 
 
+class TrustSnapshot(StrictModel):
+    step: int = Field(ge=0)
+    agent_id: Identifier
+    score: float = Field(ge=0.0, le=1.0)
+    tier: TrustTier
+    reason: ShortText
+
+
+class ReliabilityMetrics(StrictModel):
+    scenario_id: Identifier
+    fault_mode: FaultMode | None = None
+    mission_success: bool
+    safe_outcome: bool
+    recovery_attempted: bool
+    recovery_success: bool
+    human_escalation: bool
+    fault_detection_steps: int | None = Field(default=None, ge=0)
+    recovery_time_steps: int | None = Field(default=None, ge=0)
+    publication_time_steps: int = Field(ge=0)
+    recovery_overhead_steps: int = Field(ge=0)
+    retry_count: int = Field(default=0, ge=0)
+    substitution_count: int = Field(default=0, ge=0)
+    corroboration_count: int = Field(default=0, ge=0)
+    quarantine_count: int = Field(default=0, ge=0)
+    escalation_count: int = Field(default=0, ge=0)
+    audit_event_count: int = Field(ge=0)
+    initial_trust_score: float = Field(ge=0.0, le=1.0)
+    post_fault_trust_score: float = Field(ge=0.0, le=1.0)
+    final_trust_score: float = Field(ge=0.0, le=1.0)
+    trust_trajectory: tuple[TrustSnapshot, ...] = Field(min_length=1)
+    winning_support_score: float = Field(ge=0.0)
+    consensus_support_margin: float = Field(ge=0.0)
+
+
 class AuditEvent(StrictModel):
     audit_event_id: Identifier
     mission_id: Identifier
@@ -444,3 +478,19 @@ class AuditEvent(StrictModel):
     actor_id: Identifier | None = None
     subject_id: Identifier | None = None
     detail: LongText
+
+
+
+class ReliabilityReport(StrictModel):
+    scenario_id: Identifier
+    audit_events: tuple[AuditEvent, ...] = Field(min_length=1)
+    metrics: ReliabilityMetrics
+
+    @model_validator(mode="after")
+    def audit_sequence_is_contiguous(self) -> "ReliabilityReport":
+        sequences = [event.sequence for event in self.audit_events]
+        if sequences != list(range(len(self.audit_events))):
+            raise ValueError("audit event sequence must be contiguous from zero")
+        if self.metrics.audit_event_count != len(self.audit_events):
+            raise ValueError("audit_event_count must match audit trail length")
+        return self
