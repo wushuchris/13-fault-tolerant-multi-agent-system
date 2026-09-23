@@ -256,6 +256,20 @@ class AgentTrustState(StrictModel):
     role_violation_count: int = Field(default=0, ge=0)
 
 
+class FaultInjectionPlan(StrictModel):
+    injection_id: Identifier
+    target_agent_id: Identifier
+    task_id: Identifier
+    mode: FaultMode
+    trigger_step: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def plan_requires_actual_fault(self) -> "FaultInjectionPlan":
+        if self.mode is FaultMode.NONE:
+            raise ValueError("fault injection plan cannot use NONE")
+        return self
+
+
 class FaultEvent(StrictModel):
     fault_event_id: Identifier
     target_agent_id: Identifier
@@ -269,6 +283,47 @@ class FaultEvent(StrictModel):
     def event_requires_actual_fault(self) -> "FaultEvent":
         if self.mode is FaultMode.NONE:
             raise ValueError("fault event cannot use NONE")
+        return self
+
+
+class FaultObservation(StrictModel):
+    injection_id: Identifier
+    assignment_id: Identifier
+    fault_event: FaultEvent
+    raw_payload: dict[str, object] | None = None
+    work_product: WorkProduct | None = None
+    validation_error: ShortText | None = None
+
+    @model_validator(mode="after")
+    def observation_has_single_output_form(self) -> "FaultObservation":
+        output_forms = sum(
+            value is not None
+            for value in (
+                self.raw_payload,
+                self.work_product,
+                self.validation_error,
+            )
+        )
+        if self.fault_event.mode in {FaultMode.OFFLINE, FaultMode.TIMEOUT}:
+            if output_forms:
+                raise ValueError("no-response faults cannot contain an output artifact")
+            return self
+
+        if self.fault_event.mode is FaultMode.MALFORMED_OUTPUT:
+            if self.raw_payload is None or self.validation_error is None:
+                raise ValueError(
+                    "malformed output requires raw payload and validation error"
+                )
+            if self.work_product is not None:
+                raise ValueError("malformed output cannot contain a valid work product")
+            return self
+
+        if self.work_product is None:
+            raise ValueError("semantic fault modes require a structured work product")
+        if self.raw_payload is not None or self.validation_error is not None:
+            raise ValueError(
+                "structured semantic faults cannot include schema-error artifacts"
+            )
         return self
 
 
