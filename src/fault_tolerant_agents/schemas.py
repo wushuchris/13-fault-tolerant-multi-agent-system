@@ -178,7 +178,16 @@ class TaskSpec(StrictModel):
     required_capability: Capability
     description: LongText
     evidence_ids: tuple[Identifier, ...] = ()
+    depends_on_task_ids: tuple[Identifier, ...] = ()
     redundancy_required: int = Field(default=1, ge=1, le=2)
+
+
+class TaskAssignment(StrictModel):
+    assignment_id: Identifier
+    task_id: Identifier
+    agent_id: Identifier
+    capability: Capability
+    assignment_slot: int = Field(ge=1, le=2)
 
 
 class TaskBid(StrictModel):
@@ -225,6 +234,7 @@ class WorkProduct(StrictModel):
     summary: LongText
     conclusion: LongText
     evidence_ids: tuple[Identifier, ...] = Field(min_length=1)
+    input_work_product_ids: tuple[Identifier, ...] = ()
     confidence: float = Field(ge=0.0, le=1.0)
     created_at_step: int = Field(ge=0)
 
