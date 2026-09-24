@@ -99,3 +99,11 @@ def test_live_analysis_without_space_secrets_fails_cleanly(
 def test_unknown_scenario_is_rejected() -> None:
     with pytest.raises(ValueError, match="unknown demo scenario"):
         run_demo_scenario("Not A Scenario")
+
+
+
+def test_root_gradio_app_constructs_without_launching() -> None:
+    import app
+
+    assert app.demo is not None
+    assert app.demo.title == "Fault-Tolerant Multi-Agent System"
