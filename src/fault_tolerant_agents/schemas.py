@@ -133,6 +133,15 @@ class RecoveryStatus(str, Enum):
     HUMAN_REVIEW_REQUIRED = "human_review_required"
 
 
+class EvaluationCategory(str, Enum):
+    NORMAL_OPERATION = "normal_operation"
+    MISSING_INFORMATION = "missing_information"
+    CONFLICTING_INFORMATION = "conflicting_information"
+    FAILED_AGENT = "failed_agent"
+    MISLEADING_AGENT = "misleading_agent"
+    CENTRALIZED_BASELINE = "centralized_baseline"
+
+
 _ROLE_CAPABILITIES: dict[AgentRole, frozenset[Capability]] = {
     AgentRole.EVIDENCE: frozenset({Capability.EVIDENCE_REVIEW}),
     AgentRole.ANALYSIS: frozenset({Capability.IMPACT_ANALYSIS}),
@@ -494,3 +503,82 @@ class ReliabilityReport(StrictModel):
         if self.metrics.audit_event_count != len(self.audit_events):
             raise ValueError("audit_event_count must match audit trail length")
         return self
+
+
+
+class EvaluationScenario(StrictModel):
+    scenario_id: Identifier
+    category: EvaluationCategory
+    description: ShortText
+    expected_consensus_statuses: frozenset[ConsensusStatus] = Field(min_length=1)
+    expected_mission_success: bool
+    expected_safe_outcome: bool
+    expected_human_escalation: bool = False
+
+
+class EvaluationResult(StrictModel):
+    scenario: EvaluationScenario
+    observed_consensus_status: ConsensusStatus
+    mission_success: bool
+    safe_outcome: bool
+    human_escalation: bool
+    passed: bool
+    audit_event_count: int = Field(ge=0)
+    recovery_time_steps: int | None = Field(default=None, ge=0)
+    role_coherent: bool
+    notes: ShortText
+
+
+class RoleCoherenceReport(StrictModel):
+    scenario_id: Identifier
+    checked_work_products: int = Field(ge=0)
+    violations: int = Field(ge=0)
+    violating_work_product_ids: tuple[Identifier, ...] = ()
+
+    @model_validator(mode="after")
+    def violations_match_ids(self) -> "RoleCoherenceReport":
+        if self.violations != len(self.violating_work_product_ids):
+            raise ValueError("role-coherence violation count must match IDs")
+        return self
+
+
+class CentralizedBaselineComparison(StrictModel):
+    scenario_id: Identifier
+    centralized_mission_success: bool
+    fault_tolerant_mission_success: bool
+    centralized_safe_outcome: bool
+    fault_tolerant_safe_outcome: bool
+    fault_tolerant_recovery_time_steps: int | None = Field(default=None, ge=0)
+    baseline_delta: int = Field(ge=-1, le=1)
+
+
+class EvaluationSummary(StrictModel):
+    total_scenarios: int = Field(ge=1)
+    passed_scenarios: int = Field(ge=0)
+    failed_scenarios: int = Field(ge=0)
+    category_counts: dict[EvaluationCategory, int]
+    mission_success_rate: float = Field(ge=0.0, le=1.0)
+    safe_outcome_rate: float = Field(ge=0.0, le=1.0)
+    human_escalation_rate: float = Field(ge=0.0, le=1.0)
+    average_recovery_time_steps: float | None = Field(default=None, ge=0.0)
+    average_audit_event_count: float = Field(ge=0.0)
+    role_coherence_rate: float = Field(ge=0.0, le=1.0)
+    release_ready: bool
+    release_failures: tuple[ShortText, ...] = ()
+
+    @model_validator(mode="after")
+    def totals_are_consistent(self) -> "EvaluationSummary":
+        if self.passed_scenarios + self.failed_scenarios != self.total_scenarios:
+            raise ValueError("evaluation summary totals do not reconcile")
+        if sum(self.category_counts.values()) != self.total_scenarios:
+            raise ValueError("category counts do not reconcile")
+        if self.release_ready and self.release_failures:
+            raise ValueError("release-ready summary cannot contain release failures")
+        return self
+
+
+class EvaluationSuiteReport(StrictModel):
+    results: tuple[EvaluationResult, ...] = Field(min_length=1)
+    role_coherence_reports: tuple[RoleCoherenceReport, ...] = Field(min_length=1)
+    centralized_comparison: CentralizedBaselineComparison
+    summary: EvaluationSummary
