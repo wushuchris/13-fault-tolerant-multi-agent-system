@@ -253,6 +253,44 @@ class WorkProduct(StrictModel):
     created_at_step: int = Field(ge=0)
 
 
+class SpecialistTaskPacket(StrictModel):
+    packet_id: Identifier
+    task: TaskSpec
+    assignment: TaskAssignment
+    evidence: tuple[EvidenceItem, ...] = Field(min_length=1)
+    upstream_work_products: tuple[WorkProduct, ...] = ()
+    allowed_recommendations: frozenset[MissionRecommendation] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def packet_authority_is_consistent(self) -> "SpecialistTaskPacket":
+        if self.assignment.task_id != self.task.task_id:
+            raise ValueError("assignment and task IDs must match")
+        if self.assignment.capability is not self.task.required_capability:
+            raise ValueError("assignment capability must match required task capability")
+
+        packet_evidence_ids = {item.evidence_id for item in self.evidence}
+        if packet_evidence_ids != set(self.task.evidence_ids):
+            raise ValueError("packet evidence must exactly match approved task evidence")
+
+        upstream_task_ids = {
+            product.task_id for product in self.upstream_work_products
+        }
+        if not upstream_task_ids.issubset(set(self.task.depends_on_task_ids)):
+            raise ValueError("upstream work product falls outside task dependencies")
+        if not self.task.depends_on_task_ids and self.upstream_work_products:
+            raise ValueError("task without dependencies cannot receive upstream work")
+        return self
+
+
+class SpecialistDraft(StrictModel):
+    summary: LongText
+    recommendation: MissionRecommendation | None = None
+    evidence_sufficient: bool
+    supports_upstream: bool | None = None
+    evidence_ids: tuple[Identifier, ...] = Field(min_length=1)
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
 class AgentHealthState(StrictModel):
     agent_id: Identifier
     status: HealthStatus
