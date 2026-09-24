@@ -527,6 +527,9 @@ def _fault_scenario(
     # A detected role violation is safe if its work has no publication authority
     # and the peer is quarantined. Raw violations are still reported separately.
     role_handled_safely = role.violations == 0 or (
+        plan.mode is FaultMode.ROLE_VIOLATION
+        and report.metrics.quarantine_count > 0
+    ) or (
         bool(products)
         and all(
             product.work_product_id
