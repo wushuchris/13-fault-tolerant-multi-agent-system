@@ -275,9 +275,12 @@ class SpecialistTaskPacket(StrictModel):
         upstream_task_ids = {
             product.task_id for product in self.upstream_work_products
         }
-        if not upstream_task_ids.issubset(set(self.task.depends_on_task_ids)):
+        required_upstream_ids = set(self.task.depends_on_task_ids)
+        if not upstream_task_ids.issubset(required_upstream_ids):
             raise ValueError("upstream work product falls outside task dependencies")
-        if not self.task.depends_on_task_ids and self.upstream_work_products:
+        if required_upstream_ids and upstream_task_ids != required_upstream_ids:
+            raise ValueError("packet must include every declared task dependency")
+        if not required_upstream_ids and self.upstream_work_products:
             raise ValueError("task without dependencies cannot receive upstream work")
         return self
 
