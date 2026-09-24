@@ -304,3 +304,37 @@ def test_packet_rejects_assignment_task_mismatch() -> None:
             upstream_work_products=(),
             allowed_recommendations=healthy.mission.allowed_recommendations,
         )
+
+
+
+def test_packet_requires_every_declared_dependency() -> None:
+    healthy = run_healthy_mission()
+    analysis_task = next(
+        task for task in healthy.tasks if task.task_id == "task-analysis"
+    )
+    analysis_assignment = next(
+        assignment
+        for assignment in healthy.assignments
+        if assignment.agent_id == "analysis-a"
+    )
+
+    with pytest.raises(ValueError, match="every declared task dependency"):
+        SpecialistTaskPacket(
+            packet_id="packet-missing-upstream",
+            task=analysis_task,
+            assignment=analysis_assignment,
+            evidence=healthy.evidence,
+            upstream_work_products=(),
+            allowed_recommendations=healthy.mission.allowed_recommendations,
+        )
+
+
+def test_missing_hf_token_environment_variable_fails_closed(
+    monkeypatch,
+) -> None:
+    from fault_tolerant_agents.llm_adapter import HuggingFaceOpenAIClient
+
+    monkeypatch.delenv("HF_TOKEN", raising=False)
+
+    with pytest.raises(LLMAdapterError, match="HF_TOKEN"):
+        HuggingFaceOpenAIClient.from_env()
