@@ -121,7 +121,7 @@ The workflow builds an explicit public allowlist bundle containing only the runt
 
 GitHub deployment configuration:
 
-- Repository variable **HF_SPACE_ID** — target Space in username/space-name form.
+- Target Space: **FlyingNunchucks/13-fault-tolerant-multi-agent-system**
 - Repository secret **HF_DEPLOY_TOKEN** — write-capable deployment token scoped to the target Space.
 
 Hugging Face Space runtime configuration:
