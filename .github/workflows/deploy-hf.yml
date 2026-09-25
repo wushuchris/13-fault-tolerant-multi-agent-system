@@ -6,6 +6,7 @@ on:
       - Tests
     types:
       - completed
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,13 +14,15 @@ permissions:
 jobs:
   deploy:
     if: >-
-      ${{ github.event.workflow_run.conclusion == 'success' &&
-          github.event.workflow_run.event == 'push' &&
-          github.event.workflow_run.head_branch == 'main' }}
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     env:
       HF_DEPLOY_TOKEN: ${{ secrets.HF_DEPLOY_TOKEN }}
       HF_SPACE_ID: FlyingNunchucks/13-fault-tolerant-multi-agent-system
+      TESTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     steps:
       - name: Check deployment configuration
@@ -37,7 +40,7 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.TESTED_SHA }}
 
       - name: Set up Python
         if: steps.config.outputs.configured == 'true'
