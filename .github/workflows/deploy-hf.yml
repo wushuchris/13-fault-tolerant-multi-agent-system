@@ -1,0 +1,59 @@
+name: Deploy to Hugging Face
+
+on:
+  workflow_run:
+    workflows:
+      - Tests
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          vars.HF_SPACE_ID != '' }}
+    runs-on: ubuntu-latest
+    env:
+      HF_DEPLOY_TOKEN: ${{ secrets.HF_DEPLOY_TOKEN }}
+      HF_SPACE_ID: ${{ vars.HF_SPACE_ID }}
+
+    steps:
+      - name: Check deployment configuration
+        run: |
+          test -n "$HF_SPACE_ID" || {
+            echo "::error::GitHub variable HF_SPACE_ID is not configured."
+            exit 1
+          }
+          test -n "$HF_DEPLOY_TOKEN" || {
+            echo "::error::GitHub secret HF_DEPLOY_TOKEN is not configured."
+            exit 1
+          }
+
+      - name: Check out tested commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Build public Space bundle
+        run: python scripts/build_space_bundle.py --output .hf_bundle
+
+      - name: Sync tested bundle to Hugging Face
+        uses: huggingface/hub-sync@6fbce0a787a7146710e588abe7a4fd5eca07f47c
+        with:
+          github_repo_id: ${{ github.repository }}
+          huggingface_repo_id: ${{ vars.HF_SPACE_ID }}
+          hf_token: ${{ secrets.HF_DEPLOY_TOKEN }}
+          repo_type: space
+          space_sdk: gradio
+          private: false
+          subdirectory: .hf_bundle
