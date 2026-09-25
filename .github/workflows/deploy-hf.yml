@@ -48,18 +48,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install deployment client
+        if: steps.config.outputs.configured == 'true'
+        run: python -m pip install "huggingface_hub==1.33.0"
+
       - name: Build public Space bundle
         if: steps.config.outputs.configured == 'true'
         run: python scripts/build_space_bundle.py --output .hf_bundle
 
       - name: Sync tested bundle to Hugging Face
         if: steps.config.outputs.configured == 'true'
-        uses: huggingface/hub-sync@6fbce0a787a7146710e588abe7a4fd5eca07f47c
-        with:
-          github_repo_id: ${{ github.repository }}
-          huggingface_repo_id: FlyingNunchucks/13-fault-tolerant-multi-agent-system
-          hf_token: ${{ secrets.HF_DEPLOY_TOKEN }}
-          repo_type: space
-          space_sdk: gradio
-          private: false
-          subdirectory: .hf_bundle
+        run: python scripts/deploy_space.py
