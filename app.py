@@ -16,6 +16,17 @@ from fault_tolerant_agents.ui import (
 )
 
 
+APP_CSS = """
+.gradio-container {
+    max-width: 900px !important;
+    margin: 0 auto !important;
+}
+.prose, .markdown {
+    line-height: 1.6;
+}
+"""
+
+
 def demo_callback(name):
     view = run_demo_scenario(name)
     return (
@@ -40,55 +51,69 @@ def live_callback():
     return message, live_product_story(payload), payload
 
 
-with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
+with gr.Blocks(
+    title="Fault-Tolerant Multi-Agent System",
+    css=APP_CSS,
+) as demo:
     gr.Markdown(
         "# Fault-Tolerant Multi-Agent System\n"
-        "### Can an AI team keep working safely when one of its members fails or gives a bad answer?\n\n"
-        "This demo deliberately breaks members of a six-agent financial-services AI team and "
-        "shows how the surrounding software detects the problem, limits the bad "
-        "agent's authority, recovers when possible, and asks a human when it cannot "
-        "recover safely.\n\n"
-        "**Engineering principle:** Agents contribute work. The application decides "
-        "whom to trust and whether the result is safe to publish."
+        "### A financial-services demo of resilient AI teamwork\n\n"
+        "**What this agent is:** a reliability layer for an AI team. It is not a "
+        "trading bot and it does not predict markets. The demo asks a simpler, "
+        "important question: **what should happen when one AI worker fails, gives "
+        "weak evidence, disagrees with its peers, or returns a misleading answer?**\n\n"
+        "**How the six-agent team works:**\n"
+        "1. **Two Evidence Reviewers** independently check the approved pricing and issuer facts.\n"
+        "2. **Two Impact Analysts** independently recommend how to handle the valuation discrepancy.\n"
+        "3. **Two Verifiers** independently check the recommendation before it can influence reporting.\n\n"
+        "The AI workers produce work. **Application code—not the model—controls trust, "
+        "quarantine, recovery, and publication authority.**"
     )
 
-    with gr.Tab("Story Demo"):
+    with gr.Tab("1 · Guided Story"):
         gr.Markdown(
-            "## The business case\n"
+            "## The financial-services case\n"
             f"{BUSINESS_CASE}\n\n"
-            "**The AI team:** two agents confirm the facts, two independently analyze "
-            "the valuation impact, and two independently verify the recommendation. "
-            "Choose something to break and watch what the system does."
+            "The normal control response is to quarantine the suspicious primary "
+            "price, use the approved secondary price under the firm's exception "
+            "process, and investigate the discrepancy.\n\n"
+            "### Choose one thing to break\n"
+            "The scenario names describe the lesson. For a first look, try "
+            "**Misleading Agent — Quarantine and Replace**, then "
+            "**No Backup — Stop and Ask a Human**."
         )
         scenario = gr.Dropdown(
             choices=scenario_choices(),
-            value="Healthy Mission",
-            label="Choose what goes wrong",
+            value="Misleading Agent — Quarantine and Replace",
+            label="Failure scenario",
         )
-        run_button = gr.Button("Run the scenario", variant="primary")
+        run_button = gr.Button("Simulate this scenario", variant="primary")
 
         story = gr.Markdown()
 
-        gr.Markdown("### At a glance")
-        executive = gr.Dataframe(
-            headers=["Question", "Answer"],
-            interactive=False,
-        )
-
-        gr.Markdown("### What happened to the AI team")
-        team = gr.Dataframe(
-            headers=["AI teammate", "Plain-English job", "Status in this scenario"],
-            interactive=False,
-        )
-
         with gr.Accordion(
-            "Engineering details — trust, recovery, metrics, audit, and consensus",
+            "See the team state and engineering evidence",
             open=False,
         ):
             gr.Markdown(
-                "These are the implementation-level artifacts behind the story above."
+                "Everything below is the implementation evidence behind the story. "
+                "A non-technical viewer can stop above; an engineer can inspect the "
+                "exact state transitions here."
             )
-            gr.Markdown("#### Agent health and trust")
+
+            gr.Markdown("#### Executive snapshot")
+            executive = gr.Dataframe(
+                headers=["Question", "Answer"],
+                interactive=False,
+            )
+
+            gr.Markdown("#### Six-agent team")
+            team = gr.Dataframe(
+                headers=["AI teammate", "Job", "Status in this scenario"],
+                interactive=False,
+            )
+
+            gr.Markdown("#### Health and trust state")
             agents = gr.Dataframe(
                 headers=[
                     "Agent",
@@ -122,41 +147,41 @@ with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
             gr.Markdown("#### Final consensus object")
             consensus = gr.JSON()
 
+        outputs = [
+            story,
+            executive,
+            team,
+            agents,
+            recovery,
+            metrics,
+            audit,
+            consensus,
+        ]
         run_button.click(
             fn=demo_callback,
             inputs=[scenario],
-            outputs=[
-                story,
-                executive,
-                team,
-                agents,
-                recovery,
-                metrics,
-                audit,
-                consensus,
-            ],
+            outputs=outputs,
+        )
+        scenario.change(
+            fn=demo_callback,
+            inputs=[scenario],
+            outputs=outputs,
         )
         demo.load(
             fn=demo_callback,
             inputs=[scenario],
-            outputs=[
-                story,
-                executive,
-                team,
-                agents,
-                recovery,
-                metrics,
-                audit,
-                consensus,
-            ],
+            outputs=outputs,
         )
 
-    with gr.Tab("Reliability Evaluation"):
+    with gr.Tab("2 · Reliability Tests"):
         gr.Markdown(
-            "## Does the system behave safely across many failure cases?\n"
-            "This tab runs the formal reliability suite. The summary is written for "
-            "a general audience; the scenario table and baseline object preserve the "
-            "engineering evidence."
+            "## Does it keep behaving safely when conditions change?\n"
+            "The guided story shows one failure at a time. This tab runs the formal "
+            "16-scenario reliability suite across healthy operation, missing evidence, "
+            "agent disagreement, failed agents, misleading agents, and loss of backup "
+            "capacity.\n\n"
+            "A scenario can pass by **stopping and asking a human**. The goal is safe "
+            "behavior, not automation at all costs."
         )
         eval_button = gr.Button("Run the 16-scenario reliability suite")
         eval_summary = gr.Markdown()
@@ -179,19 +204,25 @@ with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
             outputs=[eval_summary, eval_results, comparison],
         )
 
-    with gr.Tab("Live AI Analyst"):
+    with gr.Tab("3 · Live AI Analyst"):
         gr.Markdown(
-            "## Now use a real language model\n"
-            "The Story Demo is deterministic so failures are reproducible. This tab "
-            "calls a real hosted language model for the **Analysis Agent** job. "
-            "The model can draft an analysis of the pricing discrepancy, but it cannot choose its identity, "
-            "change trust, recover the mission, or approve publication."
+            "## Replace the deterministic analyst with a real hosted model\n"
+            "The Guided Story uses deterministic outputs so every failure is "
+            "reproducible. This tab sends the **same approved financial evidence** "
+            "to a real language model for one bounded Analysis Agent job.\n\n"
+            "The model may summarize the discrepancy and propose a bounded "
+            "recommendation. It **cannot** choose its identity, expand its role, "
+            "change trust, quarantine another agent, recover the mission, or approve "
+            "publication. Those decisions remain in application code."
         )
         live_status = gr.Markdown(value=live_inference_status())
         live_button = gr.Button("Ask the live AI analyst", variant="primary")
         live_message = gr.Markdown()
         live_story = gr.Markdown()
-        with gr.Accordion("Engineering artifact — validated WorkProduct", open=False):
+        with gr.Accordion(
+            "Engineering artifact — validated WorkProduct",
+            open=False,
+        ):
             live_product = gr.JSON(label="Validated WorkProduct")
         live_button.click(
             fn=live_callback,
