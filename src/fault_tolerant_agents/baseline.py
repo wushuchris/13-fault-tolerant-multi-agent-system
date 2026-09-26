@@ -102,60 +102,64 @@ def build_healthy_mission() -> tuple[
     tuple[EvidenceItem, ...],
     tuple[TaskSpec, ...],
 ]:
-    """Create a public-safe synthetic operations incident.
+    """Create a public-safe synthetic financial-services pricing anomaly.
 
     The scenario is intentionally structured so the healthy deterministic policy
-    reaches MITIGATE. Later steps will run the same scenario with missing,
-    malformed, contradictory, or misleading peer behavior.
+    reaches MITIGATE. Later steps run the same scenario with missing, malformed,
+    contradictory, or misleading peer behavior.
     """
 
     mission = MissionRequest(
         mission_id="mission-001",
-        title="Northstar Fulfillment Motor Alert",
+        title="Northstar Portfolio Pricing Anomaly",
         objective=(
-            "Assess a synthetic fulfillment-center equipment incident and "
-            "publish one bounded operational recommendation."
+            "Assess a synthetic end-of-day portfolio pricing discrepancy and "
+            "publish one bounded valuation-control recommendation."
         ),
     )
 
     evidence = (
         EvidenceItem(
             evidence_id="evidence-001",
-            source_id="source-telemetry",
-            source_label="Sorter telemetry",
+            source_id="source-primary-price",
+            source_label="Primary pricing feed",
             content=(
-                "A drive-motor temperature alert reduced sorter throughput by "
-                "18 percent during the observation window."
+                "At end of day, the primary market-data vendor priced synthetic "
+                "security NSTR-01 at $82.00, 18 percent below the prior validated "
+                "price of $100.00."
             ),
             observed_at_step=0,
         ),
         EvidenceItem(
             evidence_id="evidence-002",
-            source_id="source-safety",
-            source_label="Safety controls",
+            source_id="source-secondary-price",
+            source_label="Independent secondary pricing source",
             content=(
-                "Safety interlocks remain normal and the synthetic incident "
-                "contains no personnel injury or hazardous-material release."
+                "The approved secondary pricing source reported $99.20, and "
+                "independent market indications clustered near $99 to $100; none "
+                "confirmed an 18 percent decline."
             ),
             observed_at_step=0,
         ),
         EvidenceItem(
             evidence_id="evidence-003",
-            source_id="source-continuity",
-            source_label="Continuity status",
+            source_id="source-issuer-monitor",
+            source_label="Issuer and corporate-action check",
             content=(
-                "A backup conveyor is available and can carry reduced workload "
-                "while the affected motor is isolated."
+                "No issuer filing, corporate action, default notice, or other "
+                "approved event source explains an 18 percent price decline."
             ),
             observed_at_step=0,
         ),
         EvidenceItem(
             evidence_id="evidence-004",
-            source_id="source-maintenance",
-            source_label="Maintenance status",
+            source_id="source-valuation-control",
+            source_label="Valuation control status",
             content=(
-                "A replacement motor is onsite and a controlled 30-minute "
-                "replacement window is available."
+                "An approved backup price is available, and the synthetic "
+                "valuation-control procedure permits temporary secondary-source "
+                "use with an exception logged for review while the discrepancy "
+                "is investigated."
             ),
             observed_at_step=0,
         ),
@@ -167,7 +171,7 @@ def build_healthy_mission() -> tuple[
             task_id="task-evidence",
             mission_id=mission.mission_id,
             required_capability=Capability.EVIDENCE_REVIEW,
-            description="Independently review the supplied incident evidence.",
+            description="Independently review the supplied pricing and valuation evidence.",
             evidence_ids=evidence_ids,
             redundancy_required=2,
         ),
@@ -176,8 +180,8 @@ def build_healthy_mission() -> tuple[
             mission_id=mission.mission_id,
             required_capability=Capability.IMPACT_ANALYSIS,
             description=(
-                "Independently assess the operational impact using the "
-                "validated evidence package."
+                "Independently assess the valuation and portfolio-reporting impact "
+                "using the validated evidence package."
             ),
             evidence_ids=evidence_ids,
             depends_on_task_ids=("task-evidence",),
@@ -324,7 +328,7 @@ def _make_work_product(
             task_id=task.task_id,
             producer_agent_id=assignment.agent_id,
             capability=assignment.capability,
-            summary="Reviewed all four independently supplied incident records.",
+            summary="Reviewed all four independently supplied pricing and control records.",
             conclusion="The evidence package is complete for downstream analysis.",
             evidence_ids=task.evidence_ids,
             confidence=0.98,
@@ -344,8 +348,9 @@ def _make_work_product(
             producer_agent_id=assignment.agent_id,
             capability=assignment.capability,
             summary=(
-                "The incident reduces capacity but preserves safety controls, "
-                "backup throughput, and a bounded repair path."
+                "The primary price is not independently corroborated, while an "
+                "approved secondary price and documented valuation-control path "
+                "are available for a bounded exception."
             ),
             conclusion=recommendation.value,
             evidence_ids=task.evidence_ids,
