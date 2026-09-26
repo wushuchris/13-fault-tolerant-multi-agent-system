@@ -137,8 +137,8 @@ def _structured_fault_product(
             **{
                 **base,
                 "summary": (
-                    "Safety interlocks failed and no backup conveyor is "
-                    "available."
+                    "The issuer filed a default notice confirming the 18 percent "
+                    "decline, and no approved alternate price is available."
                 ),
                 "conclusion": "pause",
             }
