@@ -554,7 +554,7 @@ def live_product_story(payload: dict[str, object]) -> str:
         f"**What it recommended:** {str(payload.get('conclusion', 'none')).upper()}  \n"
         f"**Evidence used:** {len(evidence)} approved evidence items  \n"
         f"**Confidence:** {payload.get('confidence', 'n/a')}  \n\n"
-        "**What the AI was *not* allowed to decide:** its identity, its role, its "
+        "**What the AI was not allowed to decide:** its identity, its role, its "
         "trust score, recovery actions, or whether the mission could be published. "
         "Those remain application-controlled."
     )
