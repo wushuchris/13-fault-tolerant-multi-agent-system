@@ -72,7 +72,7 @@ def test_no_backup_demo_explains_safe_human_escalation() -> None:
     assert "No automated decision" in view["story"]
     assert view["consensus"]["human_review_required"] is True
     executive = dict(view["executive"])
-    assert executive["Human required?"] == "Yes"
+    assert executive["Human review"] == "Required"
 
 
 def test_role_violation_demo_targets_verification_peer() -> None:
