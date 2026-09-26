@@ -338,3 +338,37 @@ def test_missing_hf_token_environment_variable_fails_closed(
 
     with pytest.raises(LLMAdapterError, match="HF_TOKEN"):
         HuggingFaceOpenAIClient.from_env()
+
+
+
+def test_analysis_prompt_explicitly_forbids_verification_authority() -> None:
+    packet = packet_for("task-analysis", "analysis-a")
+
+    messages = build_specialist_messages(packet)
+    system = messages[0]["content"]
+
+    assert "ROLE RULES FOR IMPACT ANALYSIS" in system
+    assert "supports_upstream MUST be null" in system
+    assert "not a verification authority" in system
+
+
+def test_evidence_prompt_requires_null_recommendation_and_supports_upstream() -> None:
+    packet = packet_for("task-evidence", "evidence-a")
+
+    messages = build_specialist_messages(packet)
+    system = messages[0]["content"]
+
+    assert "ROLE RULES FOR EVIDENCE REVIEW" in system
+    assert "recommendation MUST be null" in system
+    assert "supports_upstream MUST be null" in system
+
+
+def test_verification_prompt_requires_explicit_support_judgment() -> None:
+    packet = packet_for("task-verification", "verification-a")
+
+    messages = build_specialist_messages(packet)
+    system = messages[0]["content"]
+
+    assert "ROLE RULES FOR CLAIM VERIFICATION" in system
+    assert "supports_upstream MUST be true or false" in system
+    assert "Do not create a new recommendation" in system
