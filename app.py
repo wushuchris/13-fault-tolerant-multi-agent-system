@@ -53,7 +53,6 @@ def live_callback():
 
 with gr.Blocks(
     title="Fault-Tolerant Multi-Agent System",
-    css=APP_CSS,
 ) as demo:
     gr.Markdown(
         "# Fault-Tolerant Multi-Agent System\n"
@@ -231,4 +230,8 @@ with gr.Blocks(
 
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        css=APP_CSS,
+    )

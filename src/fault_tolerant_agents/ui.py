@@ -417,9 +417,9 @@ def _story(
 ) -> str:
     config = SCENARIOS[name]
     headline = (
-        "✅ Mission completed safely"
+        "✅ The system completed the mission safely"
         if mission_success
-        else "🧑‍⚖️ Automation stopped — human review required"
+        else "🧑‍⚖️ Automation stopped — asked for human review"
     )
     steps = "\n".join(
         f"{index}. {step}"
