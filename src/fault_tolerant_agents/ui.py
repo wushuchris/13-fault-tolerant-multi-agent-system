@@ -373,7 +373,7 @@ def _product_line(product, *, status: str, note: str = "") -> str:
     extra = f"  \n**System treatment:** {note}" if note else ""
     return (
         f"**Output:** {product.summary}  \n"
-        f"**Conclusion:** \`{conclusion}\`  \n"
+        f"**Conclusion:** `{conclusion}`  \n"
         f"**Evidence cited:** {evidence_count} approved items  \n"
         f"**Status:** {status}"
         f"{extra}"
@@ -677,7 +677,7 @@ def _work_walkthrough(
     if recovery is None:
         lines.extend([
             "**Health / trust action:** None needed.",
-            "**Consensus:** Both analyses converge on \`MITIGATE\`; both verifiers support it.",
+            "**Consensus:** Both analyses converge on `MITIGATE`; both verifiers support it.",
             "**Publication:** ✅ Allowed.",
         ])
     else:
