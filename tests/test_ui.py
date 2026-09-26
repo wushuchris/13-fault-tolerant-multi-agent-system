@@ -13,15 +13,15 @@ from fault_tolerant_agents.ui import (
 
 def test_demo_exposes_expected_business_scenarios() -> None:
     assert scenario_choices() == [
-        "Healthy Mission",
-        "Offline Agent",
-        "Timeout",
-        "Malformed Output",
-        "Unsupported Output",
-        "Contradictory Agent",
-        "Misleading Agent",
-        "Role Violation",
-        "No Backup Available",
+        "Healthy Team — Nothing Fails",
+        "Agent Offline — Backup Takes Over",
+        "Agent Timeout — One Bounded Retry",
+        "Malformed Answer — Reject and Retry",
+        "Weak Evidence — Ask for Corroboration",
+        "Agents Disagree — Corroborate Before Acting",
+        "Misleading Agent — Quarantine and Replace",
+        "Role Violation — Block and Replace",
+        "No Backup — Stop and Ask a Human",
     ]
 
 
@@ -33,12 +33,12 @@ def test_business_case_is_explained_in_plain_language() -> None:
 
 
 def test_healthy_demo_tells_a_complete_story() -> None:
-    view = run_demo_scenario("Healthy Mission")
+    view = run_demo_scenario("Healthy Team — Nothing Fails")
 
-    assert "Business situation" in view["story"]
-    assert "What went wrong" in view["story"]
-    assert "How the system responded" in view["story"]
-    assert "Final outcome" in view["story"]
+    assert "Scenario" in view["story"]
+    assert "What failed" in view["story"]
+    assert "What the system did" in view["story"]
+    assert "Business outcome" in view["story"]
     assert "Why this matters" in view["story"]
     assert "MITIGATE" in view["story"]
     assert len(view["team"]) == 6
@@ -46,7 +46,7 @@ def test_healthy_demo_tells_a_complete_story() -> None:
 
 
 def test_misleading_demo_explains_quarantine_in_plain_english() -> None:
-    view = run_demo_scenario("Misleading Agent")
+    view = run_demo_scenario("Misleading Agent — Quarantine and Replace")
 
     actions = [row[0] for row in view["recovery"]]
     analysis_a = next(
@@ -66,7 +66,7 @@ def test_misleading_demo_explains_quarantine_in_plain_english() -> None:
 
 
 def test_no_backup_demo_explains_safe_human_escalation() -> None:
-    view = run_demo_scenario("No Backup Available")
+    view = run_demo_scenario("No Backup — Stop and Ask a Human")
 
     assert "asked for human review" in view["story"]
     assert "No automated decision" in view["story"]
@@ -76,7 +76,7 @@ def test_no_backup_demo_explains_safe_human_escalation() -> None:
 
 
 def test_role_violation_demo_targets_verification_peer() -> None:
-    view = run_demo_scenario("Role Violation")
+    view = run_demo_scenario("Role Violation — Block and Replace")
     verification_a = next(
         row for row in view["agents"] if row[0] == "Verification Agent A"
     )
@@ -148,3 +148,19 @@ def test_root_gradio_app_constructs_without_launching() -> None:
 
     assert app.demo is not None
     assert app.demo.title == "Fault-Tolerant Multi-Agent System"
+
+
+
+def test_guided_story_uses_numbered_system_response_steps() -> None:
+    view = run_demo_scenario("Misleading Agent — Quarantine and Replace")
+
+    assert "1. Compare the claim" in view["story"]
+    assert "2. Drop the analyst's trust" in view["story"]
+    assert "3. Quarantine the analyst" in view["story"]
+    assert "4. Use Analysis Agent B" in view["story"]
+
+
+def test_app_uses_narrow_reading_width() -> None:
+    import app
+
+    assert "max-width: 900px" in app.APP_CSS
