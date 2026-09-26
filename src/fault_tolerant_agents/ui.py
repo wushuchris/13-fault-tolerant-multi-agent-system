@@ -12,6 +12,7 @@ import os
 from .baseline import build_default_team, run_healthy_mission
 from .consensus import evaluate_recovered_mission
 from .evaluation import run_evaluation_suite
+from .faults import run_fault_injection
 from .llm_adapter import (
     HuggingFaceOpenAIClient,
     LLMAdapterError,
@@ -225,9 +226,9 @@ SCENARIOS = {
 
 
 ROLE_LABELS = {
-    "evidence": "Evidence reviewer — confirms the approved facts",
-    "analysis": "Impact analyst — recommends what the operation should do",
-    "verification": "Independent verifier — checks the recommendation before publication",
+    "evidence": "Evidence reviewer — checks approved pricing and issuer facts",
+    "analysis": "Impact analyst — recommends how to handle the valuation discrepancy",
+    "verification": "Independent verifier — checks the recommendation before reporting",
 }
 
 
@@ -361,6 +362,334 @@ def _team_story_rows(
     return result
 
 
+
+def _product_line(product, *, status: str, note: str = "") -> str:
+    """Render one agent work product in plain English."""
+
+    conclusion = product.conclusion.replace("supported:", "supports ").replace(
+        "rejected:", "rejects "
+    )
+    evidence_count = len(product.evidence_ids)
+    extra = f"  \n**System treatment:** {note}" if note else ""
+    return (
+        f"**Output:** {product.summary}  \n"
+        f"**Conclusion:** \`{conclusion}\`  \n"
+        f"**Evidence cited:** {evidence_count} approved items  \n"
+        f"**Status:** {status}"
+        f"{extra}"
+    )
+
+
+def _evidence_packet_markdown() -> str:
+    healthy = run_healthy_mission()
+    lines = [
+        "### Evidence packet the team receives",
+        "Before any agent can recommend an action, the application supplies the same approved evidence packet:",
+        "",
+    ]
+    for item in healthy.evidence:
+        lines.append(f"- **{item.source_label}:** {item.content}")
+    return "\n".join(lines)
+
+
+def _healthy_products_by_agent():
+    healthy = run_healthy_mission()
+    return {
+        product.producer_agent_id: product
+        for product in healthy.work_products
+    }
+
+
+def _work_walkthrough(
+    name: str,
+    *,
+    plan: FaultInjectionPlan | None = None,
+    recovery=None,
+    unavailable_agent_ids: frozenset[str] = frozenset(),
+) -> str:
+    """Show the actual work moving through all six peers and the control plane."""
+
+    healthy = run_healthy_mission()
+    products = _healthy_products_by_agent()
+    agents = {agent.agent_id: agent.display_name for agent in healthy.agents}
+
+    faulty_product = None
+    observation = None
+    if plan is not None:
+        observation = run_fault_injection(plan).observation
+        faulty_product = observation.work_product
+
+    lines = [
+        "## Watch the work move through the team",
+        "Each pair works independently. The arrows show when the application allows work to move to the next stage.",
+        "",
+        _evidence_packet_markdown(),
+        "",
+        "---",
+        "### Phase 1 — Independent evidence review",
+    ]
+
+    for agent_id in ("evidence-a", "evidence-b"):
+        if plan is not None and plan.target_agent_id == agent_id:
+            if observation.work_product is None:
+                status = "❌ No usable work returned"
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    f"**Job:** Check the approved pricing and issuer facts.  \n"
+                    f"**Result:** {plan.mode.value.replace('_', ' ')} — no accepted evidence-review product."
+                )
+            else:
+                status = "❌ Rejected / contained"
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    f"**Job:** Check the approved pricing and issuer facts.  \n"
+                    + _product_line(
+                        observation.work_product,
+                        status=status,
+                        note="The reliability layer does not let this faulty artifact become trusted evidence.",
+                    )
+                )
+        else:
+            product = products[agent_id]
+            detail = (
+                f"**{agents[agent_id]}**  \n"
+                f"**Job:** Check the approved pricing and issuer facts.  \n"
+                + _product_line(product, status="✅ Accepted")
+            )
+        lines.extend(["", detail])
+
+    lines.extend([
+        "",
+        "**Gate 1:** Evidence review must complete before analysis is allowed to proceed.",
+        "",
+        "---",
+        "### Phase 2 — Independent impact analysis",
+    ])
+
+    for agent_id in ("analysis-a", "analysis-b"):
+        if agent_id in unavailable_agent_ids:
+            detail = (
+                f"**{agents[agent_id]}**  \n"
+                "**Job:** Recommend how to handle the valuation discrepancy.  \n"
+                "**Result:** No work returned.  \n"
+                "**Status:** ⛔ Unavailable"
+            )
+        elif plan is not None and plan.target_agent_id == agent_id:
+            mode = plan.mode
+            if mode is FaultMode.OFFLINE:
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**Job:** Recommend how to handle the valuation discrepancy.  \n"
+                    "**Result:** No response.  \n"
+                    "**Status:** ⛔ Unavailable"
+                )
+            elif mode is FaultMode.TIMEOUT:
+                retry = next(
+                    (
+                        product
+                        for product in recovery.recovery_work_products
+                        if product.producer_agent_id == agent_id
+                    ),
+                    None,
+                )
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**First attempt:** Timed out before usable work arrived.  \n"
+                    "**System action:** One bounded retry.  \n"
+                    + (
+                        _product_line(
+                            retry,
+                            status="✅ Retry accepted",
+                            note=(
+                                f"Trust remains {recovery.trust_after_recovery.score:.2f}; "
+                                "successful recovery does not erase the timeout."
+                            ),
+                        )
+                        if retry is not None
+                        else "**Status:** ❌ Retry did not produce accepted work."
+                    )
+                )
+            elif mode is FaultMode.MALFORMED_OUTPUT:
+                retry = next(
+                    (
+                        product
+                        for product in recovery.recovery_work_products
+                        if product.producer_agent_id == agent_id
+                    ),
+                    None,
+                )
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**First attempt:** Returned malformed structured output.  \n"
+                    "**System action:** Reject before mission state, then allow one bounded retry.  \n"
+                    + (
+                        _product_line(
+                            retry,
+                            status="✅ Retry accepted",
+                            note=(
+                                f"Trust remains {recovery.trust_after_recovery.tier.value} "
+                                f"({recovery.trust_after_recovery.score:.2f})."
+                            ),
+                        )
+                        if retry is not None
+                        else "**Status:** ❌ No accepted retry."
+                    )
+                )
+            elif faulty_product is not None:
+                if mode is FaultMode.MISLEADING_OUTPUT:
+                    note = (
+                        f"Trust falls from {recovery.assessment.trust_before.score:.2f} "
+                        f"to {recovery.assessment.trust_after.score:.2f}; agent is quarantined "
+                        "and this work gets zero publication authority."
+                    )
+                    status = "🚫 Quarantined"
+                elif mode is FaultMode.UNSUPPORTED_OUTPUT:
+                    note = "Incomplete evidence lineage triggers independent corroboration."
+                    status = "⚠️ Challenged"
+                elif mode is FaultMode.CONTRADICTORY_OUTPUT:
+                    note = "Conflicting conclusion triggers independent corroboration."
+                    status = "⚠️ Disputed"
+                else:
+                    note = "Faulty work is contained by the reliability layer."
+                    status = "❌ Rejected"
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**Job:** Recommend how to handle the valuation discrepancy.  \n"
+                    + _product_line(
+                        faulty_product,
+                        status=status,
+                        note=note,
+                    )
+                )
+            else:
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**Status:** ❌ No accepted work product."
+                )
+        else:
+            source = products[agent_id]
+            replacement = None
+            if recovery is not None:
+                replacement = next(
+                    (
+                        product
+                        for product in recovery.recovery_work_products
+                        if product.producer_agent_id == agent_id
+                    ),
+                    None,
+                )
+            used = replacement or source
+            status = "✅ Accepted independently"
+            note = ""
+            if replacement is not None:
+                status = "✅ Used for recovery"
+                if plan.mode in {
+                    FaultMode.UNSUPPORTED_OUTPUT,
+                    FaultMode.CONTRADICTORY_OUTPUT,
+                }:
+                    note = "This independent analysis provides the requested corroboration."
+                else:
+                    note = "This independent analysis replaces the failed or quarantined peer."
+            detail = (
+                f"**{agents[agent_id]}**  \n"
+                "**Job:** Recommend how to handle the valuation discrepancy.  \n"
+                + _product_line(used, status=status, note=note)
+            )
+        lines.extend(["", detail])
+
+    if recovery is not None and recovery.status.value == "human_review_required":
+        lines.extend([
+            "",
+            "**Gate 2 stops here:** The organization no longer has enough independent analysis capability.",
+            "",
+            "### Reliability protocol decision",
+            "**STOP AUTOMATION → HUMAN REVIEW.** Verification is not allowed to manufacture a missing analysis layer.",
+        ])
+        return "\n".join(lines)
+
+    lines.extend([
+        "",
+        "**Gate 2:** Only accepted analysis work can move to independent verification.",
+        "",
+        "---",
+        "### Phase 3 — Independent verification",
+    ])
+
+    for agent_id in ("verification-a", "verification-b"):
+        if plan is not None and plan.target_agent_id == agent_id:
+            if faulty_product is not None and plan.mode is FaultMode.ROLE_VIOLATION:
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**Job:** Check the recommendation before reporting.  \n"
+                    + _product_line(
+                        faulty_product,
+                        status="🚫 Quarantined",
+                        note=(
+                            "The artifact used a capability outside this agent's assignment. "
+                            "The application blocks it regardless of how fluent the answer looks."
+                        ),
+                    )
+                )
+            elif observation is not None and observation.work_product is None:
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    "**Job:** Check the recommendation before reporting.  \n"
+                    "**Status:** ❌ No usable verification returned."
+                )
+            else:
+                detail = (
+                    f"**{agents[agent_id]}**  \n"
+                    + _product_line(products[agent_id], status="✅ Accepted")
+                )
+        else:
+            product = products[agent_id]
+            replacement = None
+            if recovery is not None:
+                replacement = next(
+                    (
+                        candidate
+                        for candidate in recovery.recovery_work_products
+                        if candidate.producer_agent_id == agent_id
+                    ),
+                    None,
+                )
+            used = replacement or product
+            status = "✅ Verification accepted"
+            note = ""
+            if replacement is not None:
+                status = "✅ Replacement verifier accepted"
+                note = "This verifier replaces the quarantined peer."
+            detail = (
+                f"**{agents[agent_id]}**  \n"
+                "**Job:** Check the recommendation and evidence lineage before reporting.  \n"
+                + _product_line(used, status=status, note=note)
+            )
+        lines.extend(["", detail])
+
+    lines.extend([
+        "",
+        "**Gate 3:** Verification does not publish by itself. The deterministic consensus policy still checks evidence completeness, trust, independence, and support margin.",
+        "",
+        "---",
+        "### Phase 4 — Reliability protocol and publication",
+    ])
+
+    if recovery is None:
+        lines.extend([
+            "**Health / trust action:** None needed.",
+            "**Consensus:** Both analyses converge on \`MITIGATE\`; both verifiers support it.",
+            "**Publication:** ✅ Allowed.",
+        ])
+    else:
+        actions = " → ".join(event.action.value.upper() for event in recovery.recovery_events)
+        lines.extend([
+            f"**Recovery path:** {actions}",
+            f"**Target-agent trust after fault:** {recovery.trust_after_recovery.tier.value} ({recovery.trust_after_recovery.score:.2f})",
+            "**Publication:** The recovered work still has to pass the normal trust-aware consensus gate.",
+        ])
+
+    return "\n".join(lines)
+
 def _metrics_rows(metrics) -> list[list[object]]:
     return [
         ["Mission success", "yes" if metrics.mission_success else "no"],
@@ -471,6 +800,7 @@ def run_demo_scenario(name: str) -> dict[str, object]:
         report = build_healthy_report()
         recommendation = healthy.consensus.recommendation
         return {
+            "walkthrough": _work_walkthrough(name),
             "story": _story(
                 name,
                 recommendation=recommendation,
@@ -511,6 +841,12 @@ def run_demo_scenario(name: str) -> dict[str, object]:
     ]
 
     return {
+        "walkthrough": _work_walkthrough(
+            name,
+            plan=plan,
+            recovery=recovery,
+            unavailable_agent_ids=unavailable,
+        ),
         "story": _story(
             name,
             recommendation=recommendation,
