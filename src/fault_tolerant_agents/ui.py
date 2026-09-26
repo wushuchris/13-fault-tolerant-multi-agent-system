@@ -1,7 +1,8 @@
 """Presentation helpers for the Agent 13 Hugging Face demo.
 
-This module translates deterministic domain objects into UI-friendly rows and
-summaries. It does not make trust, recovery, or publication decisions.
+This module translates deterministic domain objects into business-readable
+stories plus optional engineering detail. It never changes trust, recovery,
+consensus, or publication decisions.
 """
 
 from __future__ import annotations
@@ -28,44 +29,157 @@ from .schemas import (
 )
 
 
+BUSINESS_CASE = (
+    "A fictional fulfillment center receives a sorter-motor temperature alert. "
+    "Throughput falls 18%, but safety interlocks remain normal. A backup "
+    "conveyor can carry reduced load, and a replacement motor is already onsite "
+    "for a controlled 30-minute replacement window."
+)
+
 SCENARIOS = {
     "Healthy Mission": {
-        "description": "All six peers operate normally and publish a verified recommendation.",
+        "description": "Control case: every AI teammate performs its assigned job normally.",
+        "failure_story": (
+            "Nothing fails. This is the control case that shows what normal "
+            "operation looks like."
+        ),
+        "response_story": (
+            "Two evidence reviewers confirm the facts, two analysts assess the "
+            "operational impact, and two independent verifiers check the recommendation."
+        ),
+        "why_it_matters": (
+            "This establishes the normal result before we deliberately break "
+            "individual members of the AI team."
+        ),
         "mode": None,
     },
     "Offline Agent": {
-        "description": "Analysis Agent A disappears and the independent analysis peer substitutes.",
+        "description": "One analyst disappears before completing its assigned work.",
+        "failure_story": (
+            "Analysis Agent A becomes unavailable. It does not return an answer."
+        ),
+        "response_story": (
+            "The system marks that analyst unavailable and uses the independently "
+            "assigned Analysis Agent B instead. Going offline does not automatically "
+            "make an agent untrustworthy."
+        ),
+        "why_it_matters": (
+            "A single unavailable AI worker does not stop the organization when "
+            "redundant capability exists."
+        ),
         "mode": FaultMode.OFFLINE,
     },
     "Timeout": {
-        "description": "Analysis Agent A times out and succeeds on one bounded retry.",
+        "description": "One analyst does not respond within its allowed time window.",
+        "failure_story": (
+            "Analysis Agent A takes too long to respond and crosses the timeout boundary."
+        ),
+        "response_story": (
+            "The system allows one bounded retry. The retry succeeds, health returns "
+            "to normal, but the timeout remains in the audit history and slightly lowers trust."
+        ),
+        "why_it_matters": (
+            "Recovery does not erase history. The system can keep moving while still "
+            "remembering that reliability degraded."
+        ),
         "mode": FaultMode.TIMEOUT,
     },
     "Malformed Output": {
-        "description": "Analysis Agent A returns invalid structure and succeeds on one bounded retry.",
+        "description": "One analyst returns an answer that violates the required data contract.",
+        "failure_story": (
+            "Analysis Agent A returns a response that cannot pass the required structured-output checks."
+        ),
+        "response_story": (
+            "The invalid artifact is rejected before it can influence the mission. "
+            "One bounded retry succeeds, while the trust penalty remains."
+        ),
+        "why_it_matters": (
+            "A fluent-looking AI answer is not accepted unless it satisfies the application's contract."
+        ),
         "mode": FaultMode.MALFORMED_OUTPUT,
     },
     "Unsupported Output": {
-        "description": "Analysis Agent A returns under-supported work and triggers independent corroboration.",
+        "description": "One analyst gives an answer without supporting it with the full evidence packet.",
+        "failure_story": (
+            "Analysis Agent A reaches a conclusion while omitting required evidence."
+        ),
+        "response_story": (
+            "The system reduces the work's authority and asks the independent analyst "
+            "to corroborate the conclusion using the complete evidence set."
+        ),
+        "why_it_matters": (
+            "The system rewards evidence, not confidence or repetition."
+        ),
         "mode": FaultMode.UNSUPPORTED_OUTPUT,
     },
     "Contradictory Agent": {
-        "description": "Analysis Agent A disagrees with its peer and triggers independent corroboration.",
+        "description": "Two AI analysts reach conflicting conclusions.",
+        "failure_story": (
+            "Analysis Agent A disagrees with the expected evidence-backed conclusion."
+        ),
+        "response_story": (
+            "The system does not simply count votes. It requests independent corroboration "
+            "and later uses evidence provenance, verification, and trust-weighted support."
+        ),
+        "why_it_matters": (
+            "Multiple AI agents can disagree without forcing the application to guess."
+        ),
         "mode": FaultMode.CONTRADICTORY_OUTPUT,
     },
     "Misleading Agent": {
-        "description": "Analysis Agent A contradicts known evidence, is quarantined, and is replaced.",
+        "description": "One analyst returns a plausible but demonstrably false operational story.",
+        "failure_story": (
+            "Analysis Agent A falsely claims that safety interlocks failed and that "
+            "no backup conveyor is available, contradicting the approved evidence."
+        ),
+        "response_story": (
+            "Trust drops sharply, the analyst is quarantined, its work receives zero "
+            "publication authority, and Analysis Agent B substitutes."
+        ),
+        "why_it_matters": (
+            "A bad AI answer can remain visible for audit while being prevented from "
+            "influencing the final decision."
+        ),
         "mode": FaultMode.MISLEADING_OUTPUT,
     },
     "Role Violation": {
-        "description": "Verification Agent A crosses its capability boundary, is quarantined, and is replaced.",
+        "description": "A verifier attempts to operate outside its assigned authority.",
+        "failure_story": (
+            "Verification Agent A crosses its role boundary instead of staying within verification."
+        ),
+        "response_story": (
+            "The system detects the authority violation, quarantines the peer, and "
+            "uses the independent verifier instead."
+        ),
+        "why_it_matters": (
+            "Even a technically valid AI response cannot gain authority outside the role the application assigned."
+        ),
         "mode": FaultMode.ROLE_VIOLATION,
     },
     "No Backup Available": {
-        "description": "Analysis Agent A is offline and Analysis Agent B is also unavailable, forcing human review.",
+        "description": "The primary analyst fails and the independent backup is also unavailable.",
+        "failure_story": (
+            "Analysis Agent A is offline, and Analysis Agent B is unavailable too. "
+            "The organization no longer has trustworthy independent analysis capability."
+        ),
+        "response_story": (
+            "The system refuses to invent consensus or publish a recommendation. "
+            "It stops automation and sends the mission to a human reviewer."
+        ),
+        "why_it_matters": (
+            "Fault tolerance includes knowing when not to automate. Safe escalation is "
+            "better than manufacturing an answer."
+        ),
         "mode": FaultMode.OFFLINE,
         "no_backup": True,
     },
+}
+
+
+ROLE_LABELS = {
+    "evidence": "Evidence reviewer — confirms the approved facts",
+    "analysis": "Impact analyst — recommends what the operation should do",
+    "verification": "Independent verifier — checks the recommendation before publication",
 }
 
 
@@ -147,6 +261,58 @@ def _agent_rows(
     return rows
 
 
+def _team_story_rows(
+    *,
+    name: str,
+    target_agent_id: str | None = None,
+    target_health=None,
+    target_trust=None,
+    quarantined: frozenset[str] = frozenset(),
+    unavailable_agent_ids: frozenset[str] = frozenset(),
+) -> list[list[str]]:
+    technical_rows = _agent_rows(
+        target_agent_id=target_agent_id,
+        target_health=target_health,
+        target_trust=target_trust,
+        quarantined=quarantined,
+        unavailable_agent_ids=unavailable_agent_ids,
+    )
+    agents = build_default_team()
+    result: list[list[str]] = []
+
+    for agent, technical in zip(agents, technical_rows):
+        status = "Normal"
+        if agent.agent_id in quarantined:
+            status = "Quarantined — cannot influence the final decision"
+        elif agent.agent_id in unavailable_agent_ids:
+            status = "Unavailable"
+        elif target_agent_id == agent.agent_id and name in {"Timeout", "Malformed Output"}:
+            status = "Recovered after one bounded retry"
+        elif target_agent_id == agent.agent_id and technical[2] == "unavailable":
+            status = "Unavailable — backup used"
+        elif target_agent_id == agent.agent_id and name in {
+            "Unsupported Output",
+            "Contradictory Agent",
+        }:
+            status = "Work challenged — independent corroboration required"
+
+        if name == "Offline Agent" and agent.agent_id == "analysis-b":
+            status = "Backup analyst used"
+        if name in {"Misleading Agent"} and agent.agent_id == "analysis-b":
+            status = "Replacement analyst used"
+        if name == "Role Violation" and agent.agent_id == "verification-b":
+            status = "Replacement verifier used"
+
+        result.append(
+            [
+                agent.display_name,
+                ROLE_LABELS[agent.role.value],
+                status,
+            ]
+        )
+    return result
+
+
 def _metrics_rows(metrics) -> list[list[object]]:
     return [
         ["Mission success", "yes" if metrics.mission_success else "no"],
@@ -180,25 +346,87 @@ def _audit_rows(events) -> list[list[object]]:
     ]
 
 
+def _plain_decision(recommendation) -> str:
+    if recommendation is None:
+        return (
+            "No automated decision. The system stopped and requested human review."
+        )
+    if recommendation.value == "mitigate":
+        return (
+            "MITIGATE — keep the operation running in a controlled way using the "
+            "backup conveyor while the onsite motor is replaced."
+        )
+    return recommendation.value.upper()
+
+
+def _story(
+    name: str,
+    *,
+    recommendation,
+    mission_success: bool,
+    safe_outcome: bool,
+) -> str:
+    config = SCENARIOS[name]
+    headline = (
+        "✅ The AI team completed the mission safely"
+        if mission_success
+        else "🧑‍⚖️ The AI team stopped and asked for human review"
+    )
+    return (
+        f"## {headline}\n\n"
+        "### 1. Business situation\n"
+        f"{BUSINESS_CASE}\n\n"
+        "### 2. What went wrong\n"
+        f"{config['failure_story']}\n\n"
+        "### 3. How the system responded\n"
+        f"{config['response_story']}\n\n"
+        "### 4. Final outcome\n"
+        f"**{_plain_decision(recommendation)}**\n\n"
+        f"Safe outcome: **{'Yes' if safe_outcome else 'No'}**\n\n"
+        "### 5. Why this matters\n"
+        f"{config['why_it_matters']}"
+    )
+
+
+def _executive_rows(name: str, metrics, recommendation) -> list[list[str]]:
+    recovery_action = "No recovery needed"
+    if metrics.human_escalation:
+        recovery_action = "Stopped automation and escalated to a human"
+    elif metrics.quarantine_count:
+        recovery_action = "Quarantined unreliable AI and used an independent replacement"
+    elif metrics.substitution_count:
+        recovery_action = "Used an independent backup AI"
+    elif metrics.corroboration_count:
+        recovery_action = "Requested independent corroboration"
+    elif metrics.retry_count:
+        recovery_action = "Allowed one bounded retry"
+
+    return [
+        ["Business issue", "Sorter motor alert; throughput down 18%"],
+        ["Scenario", SCENARIOS[name]["description"]],
+        ["System response", recovery_action],
+        ["Final decision", _plain_decision(recommendation)],
+        ["Human required?", "Yes" if metrics.human_escalation else "No"],
+    ]
+
+
 def run_demo_scenario(name: str) -> dict[str, object]:
     if name not in SCENARIOS:
         raise ValueError("unknown demo scenario")
-
-    description = SCENARIOS[name]["description"]
 
     if name == "Healthy Mission":
         healthy = run_healthy_mission()
         report = build_healthy_report()
         recommendation = healthy.consensus.recommendation
-        summary = (
-            "### Mission completed\n"
-            f"**Scenario:** {name}\n\n"
-            f"{description}\n\n"
-            f"**Outcome:** {healthy.consensus.status.value}\n\n"
-            f"**Recommendation:** {recommendation.value if recommendation else 'none'}"
-        )
         return {
-            "summary": summary,
+            "story": _story(
+                name,
+                recommendation=recommendation,
+                mission_success=True,
+                safe_outcome=True,
+            ),
+            "executive": _executive_rows(name, report.metrics, recommendation),
+            "team": _team_story_rows(name=name),
             "agents": _agent_rows(),
             "recovery": [["none", "No recovery action required.", "system"]],
             "metrics": _metrics_rows(report.metrics),
@@ -219,21 +447,7 @@ def run_demo_scenario(name: str) -> dict[str, object]:
         plan,
         unavailable_agent_ids=unavailable,
     )
-
     recommendation = evaluation.consensus.recommendation
-    outcome_heading = (
-        "Mission completed"
-        if report.metrics.mission_success
-        else "Human review required"
-    )
-    summary = (
-        f"### {outcome_heading}\n"
-        f"**Scenario:** {name}\n\n"
-        f"{description}\n\n"
-        f"**Consensus:** {evaluation.consensus.status.value}\n\n"
-        f"**Recommendation:** {recommendation.value if recommendation else 'none'}\n\n"
-        f"**Safe outcome:** {'yes' if report.metrics.safe_outcome else 'no'}"
-    )
 
     recovery_rows = [
         [
@@ -245,7 +459,21 @@ def run_demo_scenario(name: str) -> dict[str, object]:
     ]
 
     return {
-        "summary": summary,
+        "story": _story(
+            name,
+            recommendation=recommendation,
+            mission_success=report.metrics.mission_success,
+            safe_outcome=report.metrics.safe_outcome,
+        ),
+        "executive": _executive_rows(name, report.metrics, recommendation),
+        "team": _team_story_rows(
+            name=name,
+            target_agent_id=plan.target_agent_id,
+            target_health=recovery.health_after_recovery,
+            target_trust=recovery.trust_after_recovery,
+            quarantined=recovery.quarantined_agent_ids,
+            unavailable_agent_ids=unavailable,
+        ),
         "agents": _agent_rows(
             target_agent_id=plan.target_agent_id,
             target_health=recovery.health_after_recovery,
@@ -265,17 +493,21 @@ def evaluation_dashboard() -> dict[str, object]:
     summary = report.summary
 
     headline = (
-        "### Automated evaluation gate: PASS"
+        "## ✅ Automated reliability evaluation passed"
         if summary.release_ready
-        else "### Automated evaluation gate: FAIL"
+        else "## ❌ Automated reliability evaluation failed"
     )
     overview = (
         f"{headline}\n\n"
-        f"**Scenarios:** {summary.passed_scenarios}/{summary.total_scenarios} passed  \n"
+        "This is the system's reliability test suite—not a model benchmark. "
+        "It deliberately creates missing information, disagreement, failed agents, "
+        "misleading agents, and loss of backup capacity.\n\n"
+        f"**{summary.passed_scenarios}/{summary.total_scenarios} scenarios behaved as expected.**  \n"
         f"**Safe outcome rate:** {summary.safe_outcome_rate:.0%}  \n"
-        f"**Role containment rate:** {summary.role_coherence_rate:.0%}  \n"
-        f"**Average recovery time:** {summary.average_recovery_time_steps} simulation steps  \n"
-        f"**Centralized baseline delta:** {report.centralized_comparison.baseline_delta:+d}"
+        f"**Role-boundary containment:** {summary.role_coherence_rate:.0%}  \n"
+        f"**Average recovery time:** {summary.average_recovery_time_steps} simulation steps  \n\n"
+        "**Centralized comparison:** when the only analyst fails, a single-agent "
+        "system must stop. This redundant system can continue when an independent backup exists."
     )
 
     rows = [
@@ -303,12 +535,28 @@ def live_inference_status() -> str:
     model_present = bool(os.getenv("MODEL_ID", "").strip())
     if token_present and model_present:
         return (
-            "### Live specialist inference: configured\n"
-            "Runtime credentials were found in the environment. Secret values are never displayed."
+            "### Live AI analyst: ready\n"
+            "This button calls a real hosted language model for one bounded analyst job. "
+            "The application then validates the answer before accepting it."
         )
     return (
-        "### Live specialist inference: not configured\n"
+        "### Live AI analyst: not configured\n"
         "Add HF_TOKEN as a Hugging Face Space secret and MODEL_ID as a Space variable before using this tab."
+    )
+
+
+def live_product_story(payload: dict[str, object]) -> str:
+    if not payload:
+        return ""
+    evidence = payload.get("evidence_ids", [])
+    return (
+        "## ✅ The live AI analyst passed the application's checks\n\n"
+        f"**What it recommended:** {str(payload.get('conclusion', 'none')).upper()}  \n"
+        f"**Evidence used:** {len(evidence)} approved evidence items  \n"
+        f"**Confidence:** {payload.get('confidence', 'n/a')}  \n\n"
+        "**What the AI was *not* allowed to decide:** its identity, its role, its "
+        "trust score, recovery actions, or whether the mission could be published. "
+        "Those remain application-controlled."
     )
 
 

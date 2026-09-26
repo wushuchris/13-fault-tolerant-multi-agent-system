@@ -6,8 +6,10 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 import gradio as gr
 
 from fault_tolerant_agents.ui import (
+    BUSINESS_CASE,
     evaluation_dashboard,
     live_inference_status,
+    live_product_story,
     run_demo_scenario,
     run_live_analysis,
     scenario_choices,
@@ -17,7 +19,9 @@ from fault_tolerant_agents.ui import (
 def demo_callback(name):
     view = run_demo_scenario(name)
     return (
-        view["summary"],
+        view["story"],
+        view["executive"],
+        view["team"],
         view["agents"],
         view["recovery"],
         view["metrics"],
@@ -33,116 +37,165 @@ def evaluation_callback():
 
 def live_callback():
     message, payload = run_live_analysis()
-    return message, payload
+    return message, live_product_story(payload), payload
 
 
 with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
     gr.Markdown(
         "# Fault-Tolerant Multi-Agent System\n"
-        "### Resilient Operations Intelligence Team\n\n"
-        "A six-peer AI organization that detects unreliable behavior, adjusts "
-        "trust, corroborates disputed work, substitutes failed capability, and "
-        "escalates when safe automation is no longer possible.\n\n"
-        "**Core pattern:** Detect → Distrust → Corroborate → Substitute → Recover → Escalate"
+        "### Can an AI team keep working safely when one of its members fails or gives a bad answer?\n\n"
+        "This demo deliberately breaks members of a six-agent operations team and "
+        "shows how the surrounding software detects the problem, limits the bad "
+        "agent's authority, recovers when possible, and asks a human when it cannot "
+        "recover safely.\n\n"
+        "**Engineering principle:** Agents contribute work. The application decides "
+        "whom to trust and whether the result is safe to publish."
     )
 
-    with gr.Tab("Mission Demo"):
+    with gr.Tab("Story Demo"):
         gr.Markdown(
-            "Choose a reliability scenario. The business outcome appears first; "
-            "technical detail remains available underneath for auditability."
+            "## The business case\n"
+            f"{BUSINESS_CASE}\n\n"
+            "**The AI team:** two agents confirm the facts, two independently analyze "
+            "the operational impact, and two independently verify the recommendation. "
+            "Choose something to break and watch what the system does."
         )
         scenario = gr.Dropdown(
             choices=scenario_choices(),
             value="Healthy Mission",
-            label="Scenario",
+            label="Choose what goes wrong",
         )
-        run_button = gr.Button("Run Scenario", variant="primary")
-        outcome = gr.Markdown()
+        run_button = gr.Button("Run the scenario", variant="primary")
 
-        gr.Markdown("### Team health and trust")
-        agents = gr.Dataframe(
-            headers=[
-                "Agent",
-                "Role",
-                "Health",
-                "Trust Tier",
-                "Trust Score",
-                "Quarantined",
-            ],
+        story = gr.Markdown()
+
+        gr.Markdown("### At a glance")
+        executive = gr.Dataframe(
+            headers=["Question", "Answer"],
             interactive=False,
         )
 
-        gr.Markdown("### Recovery actions")
-        recovery = gr.Dataframe(
-            headers=["Action", "Detail", "Affected agents"],
+        gr.Markdown("### What happened to the AI team")
+        team = gr.Dataframe(
+            headers=["AI teammate", "Plain-English job", "Status in this scenario"],
             interactive=False,
         )
 
-        gr.Markdown("### Reliability metrics")
-        metrics = gr.Dataframe(
-            headers=["Metric", "Value"],
-            interactive=False,
-        )
+        with gr.Accordion(
+            "Engineering details — trust, recovery, metrics, audit, and consensus",
+            open=False,
+        ):
+            gr.Markdown(
+                "These are the implementation-level artifacts behind the story above."
+            )
+            gr.Markdown("#### Agent health and trust")
+            agents = gr.Dataframe(
+                headers=[
+                    "Agent",
+                    "Role",
+                    "Health",
+                    "Trust Tier",
+                    "Trust Score",
+                    "Quarantined",
+                ],
+                interactive=False,
+            )
 
-        with gr.Accordion("Audit trail", open=False):
+            gr.Markdown("#### Recovery actions")
+            recovery = gr.Dataframe(
+                headers=["Action", "Detail", "Affected agents"],
+                interactive=False,
+            )
+
+            gr.Markdown("#### Reliability metrics")
+            metrics = gr.Dataframe(
+                headers=["Metric", "Value"],
+                interactive=False,
+            )
+
+            gr.Markdown("#### Append-only audit trail")
             audit = gr.Dataframe(
                 headers=["Sequence", "Event", "Actor", "Detail"],
                 interactive=False,
             )
 
-        with gr.Accordion("Consensus object", open=False):
+            gr.Markdown("#### Final consensus object")
             consensus = gr.JSON()
 
         run_button.click(
             fn=demo_callback,
             inputs=[scenario],
-            outputs=[outcome, agents, recovery, metrics, audit, consensus],
+            outputs=[
+                story,
+                executive,
+                team,
+                agents,
+                recovery,
+                metrics,
+                audit,
+                consensus,
+            ],
         )
         demo.load(
             fn=demo_callback,
             inputs=[scenario],
-            outputs=[outcome, agents, recovery, metrics, audit, consensus],
+            outputs=[
+                story,
+                executive,
+                team,
+                agents,
+                recovery,
+                metrics,
+                audit,
+                consensus,
+            ],
         )
 
-    with gr.Tab("Evaluation"):
+    with gr.Tab("Reliability Evaluation"):
         gr.Markdown(
-            "The deterministic evaluation harness covers 16 scenarios across "
-            "normal operation, missing information, conflicts, failed agents, "
-            "misleading agents, and a centralized baseline comparison."
+            "## Does the system behave safely across many failure cases?\n"
+            "This tab runs the formal reliability suite. The summary is written for "
+            "a general audience; the scenario table and baseline object preserve the "
+            "engineering evidence."
         )
-        eval_button = gr.Button("Run Evaluation Suite")
+        eval_button = gr.Button("Run the 16-scenario reliability suite")
         eval_summary = gr.Markdown()
-        eval_results = gr.Dataframe(
-            headers=[
-                "Scenario",
-                "Category",
-                "Result",
-                "Consensus",
-                "Mission Success",
-                "Human Escalation",
-                "Recovery Steps",
-            ],
-            interactive=False,
-        )
-        comparison = gr.JSON(label="Centralized baseline comparison")
+        with gr.Accordion("Engineering evaluation results", open=False):
+            eval_results = gr.Dataframe(
+                headers=[
+                    "Scenario",
+                    "Category",
+                    "Result",
+                    "Consensus",
+                    "Mission Success",
+                    "Human Escalation",
+                    "Recovery Steps",
+                ],
+                interactive=False,
+            )
+            comparison = gr.JSON(label="Centralized baseline comparison")
         eval_button.click(
             fn=evaluation_callback,
             outputs=[eval_summary, eval_results, comparison],
         )
 
-    with gr.Tab("Live Specialist"):
+    with gr.Tab("Live AI Analyst"):
         gr.Markdown(
-            "Optional bounded model inference. The model may draft an Analysis "
-            "work product, but application code still owns identity, authority, "
-            "trust, recovery, consensus, and publication."
+            "## Now use a real language model\n"
+            "The Story Demo is deterministic so failures are reproducible. This tab "
+            "calls a real hosted language model for the **Analysis Agent** job. "
+            "The model can draft an analysis, but it cannot choose its identity, "
+            "change trust, recover the mission, or approve publication."
         )
         live_status = gr.Markdown(value=live_inference_status())
-        live_button = gr.Button("Run Bounded Analysis Specialist")
+        live_button = gr.Button("Ask the live AI analyst", variant="primary")
         live_message = gr.Markdown()
-        live_product = gr.JSON(label="Validated WorkProduct")
+        live_story = gr.Markdown()
+        with gr.Accordion("Engineering artifact — validated WorkProduct", open=False):
+            live_product = gr.JSON(label="Validated WorkProduct")
         live_button.click(
             fn=live_callback,
-            outputs=[live_message, live_product],
+            outputs=[live_message, live_story, live_product],
         )
 
 

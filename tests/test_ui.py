@@ -1,8 +1,10 @@
 import pytest
 
 from fault_tolerant_agents.ui import (
+    BUSINESS_CASE,
     evaluation_dashboard,
     live_inference_status,
+    live_product_story,
     run_demo_scenario,
     run_live_analysis,
     scenario_choices,
@@ -23,35 +25,52 @@ def test_demo_exposes_expected_business_scenarios() -> None:
     ]
 
 
-def test_healthy_demo_is_business_readable() -> None:
+def test_business_case_is_explained_in_plain_language() -> None:
+    assert "fulfillment center" in BUSINESS_CASE
+    assert "18%" in BUSINESS_CASE
+    assert "backup conveyor" in BUSINESS_CASE
+
+
+def test_healthy_demo_tells_a_complete_story() -> None:
     view = run_demo_scenario("Healthy Mission")
 
-    assert "Mission completed" in view["summary"]
-    assert "mitigate" in view["summary"]
-    assert len(view["agents"]) == 6
+    assert "Business situation" in view["story"]
+    assert "What went wrong" in view["story"]
+    assert "How the system responded" in view["story"]
+    assert "Final outcome" in view["story"]
+    assert "Why this matters" in view["story"]
+    assert "MITIGATE" in view["story"]
+    assert len(view["team"]) == 6
     assert view["recovery"][0][0] == "none"
 
 
-def test_misleading_demo_shows_quarantine_and_recovery() -> None:
+def test_misleading_demo_explains_quarantine_in_plain_english() -> None:
     view = run_demo_scenario("Misleading Agent")
 
     actions = [row[0] for row in view["recovery"]]
     analysis_a = next(
         row for row in view["agents"] if row[0] == "Analysis Agent A"
     )
+    story_row = next(
+        row for row in view["team"] if row[0] == "Analysis Agent A"
+    )
 
     assert actions == ["quarantine", "substitute"]
     assert analysis_a[3] == "quarantined"
     assert analysis_a[5] == "yes"
-    assert "Mission completed" in view["summary"]
+    assert "Quarantined" in story_row[2]
+    assert "zero publication authority" in view["story"]
+    assert "completed the mission safely" in view["story"]
 
 
-def test_no_backup_demo_escalates_without_recommendation() -> None:
+def test_no_backup_demo_explains_safe_human_escalation() -> None:
     view = run_demo_scenario("No Backup Available")
 
-    assert "Human review required" in view["summary"]
-    assert "Recommendation:** none" in view["summary"]
+    assert "asked for human review" in view["story"]
+    assert "No automated decision" in view["story"]
     assert view["consensus"]["human_review_required"] is True
+    executive = dict(view["executive"])
+    assert executive["Human required?"] == "Yes"
 
 
 def test_role_violation_demo_targets_verification_peer() -> None:
@@ -59,15 +78,21 @@ def test_role_violation_demo_targets_verification_peer() -> None:
     verification_a = next(
         row for row in view["agents"] if row[0] == "Verification Agent A"
     )
+    verifier_story = next(
+        row for row in view["team"] if row[0] == "Verification Agent A"
+    )
 
     assert verification_a[3] == "quarantined"
     assert verification_a[5] == "yes"
+    assert "Quarantined" in verifier_story[2]
 
 
-def test_evaluation_dashboard_exposes_release_gate() -> None:
+def test_evaluation_dashboard_explains_what_is_being_tested() -> None:
     dashboard = evaluation_dashboard()
 
-    assert "PASS" in dashboard["summary"]
+    assert "reliability test suite" in dashboard["summary"]
+    assert "16/16" in dashboard["summary"]
+    assert "Safe outcome rate" in dashboard["summary"]
     assert len(dashboard["results"]) == 16
     assert dashboard["comparison"]["baseline_delta"] == 1
 
@@ -80,8 +105,23 @@ def test_live_inference_status_does_not_expose_secret_values(
 
     status = live_inference_status()
 
-    assert "configured" in status
+    assert "ready" in status
     assert "secret-value-that-must-not-render" not in status
+
+
+def test_live_product_story_explains_engineering_boundary() -> None:
+    story = live_product_story(
+        {
+            "conclusion": "mitigate",
+            "evidence_ids": ["evidence-001", "evidence-002"],
+            "confidence": 0.95,
+        }
+    )
+
+    assert "passed the application's checks" in story
+    assert "MITIGATE" in story
+    assert "2 approved evidence items" in story
+    assert "not allowed to decide" in story
 
 
 def test_live_analysis_without_space_secrets_fails_cleanly(
@@ -99,7 +139,6 @@ def test_live_analysis_without_space_secrets_fails_cleanly(
 def test_unknown_scenario_is_rejected() -> None:
     with pytest.raises(ValueError, match="unknown demo scenario"):
         run_demo_scenario("Not A Scenario")
-
 
 
 def test_root_gradio_app_constructs_without_launching() -> None:
