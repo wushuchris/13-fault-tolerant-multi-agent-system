@@ -30,10 +30,12 @@ from .schemas import (
 
 
 BUSINESS_CASE = (
-    "A fictional fulfillment center receives a sorter-motor temperature alert. "
-    "Throughput falls 18%, but safety interlocks remain normal. A backup "
-    "conveyor can carry reduced load, and a replacement motor is already onsite "
-    "for a controlled 30-minute replacement window."
+    "A fictional asset manager is preparing an end-of-day portfolio valuation. "
+    "Its primary market-data feed suddenly prices synthetic security NSTR-01 at "
+    "$82.00, 18% below the prior validated price of $100.00. An approved "
+    "secondary source reports $99.20, independent market indications cluster "
+    "near $99 to $100, and no issuer filing or corporate action explains the "
+    "18% move."
 )
 
 SCENARIOS = {
@@ -44,8 +46,8 @@ SCENARIOS = {
             "operation looks like."
         ),
         "response_story": (
-            "Two evidence reviewers confirm the facts, two analysts assess the "
-            "operational impact, and two independent verifiers check the recommendation."
+            "Two evidence reviewers confirm the pricing facts, two analysts assess "
+            "the valuation impact, and two independent verifiers check the recommendation."
         ),
         "why_it_matters": (
             "This establishes the normal result before we deliberately break "
@@ -129,16 +131,17 @@ SCENARIOS = {
     "Misleading Agent": {
         "description": "One analyst returns a plausible but demonstrably false operational story.",
         "failure_story": (
-            "Analysis Agent A falsely claims that safety interlocks failed and that "
-            "no backup conveyor is available, contradicting the approved evidence."
+            "Analysis Agent A falsely claims that the issuer filed a default notice "
+            "confirming the 18% decline and that no approved alternate price is "
+            "available, contradicting the approved evidence."
         ),
         "response_story": (
             "Trust drops sharply, the analyst is quarantined, its work receives zero "
             "publication authority, and Analysis Agent B substitutes."
         ),
         "why_it_matters": (
-            "A bad AI answer can remain visible for audit while being prevented from "
-            "influencing the final decision."
+            "A fabricated financial claim can remain visible for audit while being "
+            "prevented from influencing the valuation decision."
         ),
         "mode": FaultMode.MISLEADING_OUTPUT,
     },
@@ -353,8 +356,9 @@ def _plain_decision(recommendation) -> str:
         )
     if recommendation.value == "mitigate":
         return (
-            "MITIGATE — keep the operation running in a controlled way using the "
-            "backup conveyor while the onsite motor is replaced."
+            "MITIGATE — quarantine the suspect primary price, use the approved "
+            "secondary price under the documented exception process, and investigate "
+            "the discrepancy before restoring the primary feed to automated use."
         )
     return recommendation.value.upper()
 
@@ -402,7 +406,7 @@ def _executive_rows(name: str, metrics, recommendation) -> list[list[str]]:
         recovery_action = "Allowed one bounded retry"
 
     return [
-        ["Business issue", "Sorter motor alert; throughput down 18%"],
+        ["Business issue", "Primary security price is 18% below independent evidence"],
         ["Scenario", SCENARIOS[name]["description"]],
         ["System response", recovery_action],
         ["Final decision", _plain_decision(recommendation)],
