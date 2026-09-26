@@ -88,10 +88,41 @@ def model_id_from_env() -> str:
     return model_id
 
 
+def _role_output_rules(capability: Capability) -> str:
+    """Return explicit role-specific output requirements."""
+
+    if capability is Capability.EVIDENCE_REVIEW:
+        return (
+            "ROLE RULES FOR EVIDENCE REVIEW: recommendation MUST be null. "
+            "supports_upstream MUST be null. Set evidence_sufficient to true "
+            "only when the approved evidence packet is complete enough for the "
+            "next stage."
+        )
+    if capability is Capability.IMPACT_ANALYSIS:
+        return (
+            "ROLE RULES FOR IMPACT ANALYSIS: supports_upstream MUST be null. "
+            "You are not a verification authority and must never set it to true "
+            "or false. If evidence_sufficient is true, recommendation MUST be "
+            "one allowed recommendation. If evidence_sufficient is false, "
+            "recommendation MUST be null."
+        )
+    if capability is Capability.CLAIM_VERIFICATION:
+        return (
+            "ROLE RULES FOR CLAIM VERIFICATION: recommendation MUST identify "
+            "the upstream recommendation being checked. supports_upstream MUST "
+            "be true or false. Do not create a new recommendation."
+        )
+    raise LLMAdapterError(
+        f"no prompt policy for capability {capability.value}"
+    )
+
+
 def build_specialist_messages(
     packet: SpecialistTaskPacket,
 ) -> tuple[dict[str, str], ...]:
     """Build the only prompt surface exposed to the specialist model."""
+
+    role_rules = _role_output_rules(packet.assignment.capability)
 
     system = (
         "You are a bounded specialist inside a fault-tolerant multi-agent "
@@ -104,7 +135,8 @@ def build_specialist_messages(
         "only these keys: summary, recommendation, evidence_sufficient, "
         "supports_upstream, evidence_ids, confidence. recommendation must be one "
         "of the allowed recommendations or null. supports_upstream must be true, "
-        "false, or null. evidence_ids must contain only approved evidence IDs."
+        "false, or null. evidence_ids must contain only approved evidence IDs. "
+        + role_rules
     )
 
     payload = {
@@ -128,7 +160,8 @@ def build_specialist_messages(
 
     user = (
         "Analyze the approved packet below and return the bounded specialist "
-        "JSON object.\n\n"
+        "JSON object. Before responding, verify that your JSON obeys the role "
+        "rules exactly, especially recommendation and supports_upstream.\n\n"
         + json.dumps(payload, sort_keys=True)
     )
     return (
