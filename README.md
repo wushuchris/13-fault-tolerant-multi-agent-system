@@ -2,6 +2,9 @@
 
 Agent 13 in the **30 Agents for AI Engineers** portfolio.
 
+**Status:** Production-validated portfolio project — **171 automated tests passing**.  
+**Live Demo:** [Hugging Face Space](https://huggingface.co/spaces/FlyingNunchucks/13-fault-tolerant-multi-agent-system)
+
 ## Purpose
 
 Build a multi-agent system that can continue operating when one or more agents fail, disappear, contradict each other, or provide misleading information.
@@ -63,11 +66,22 @@ LLMs may produce bounded specialist content, but application code retains author
 
 The model is treated as an untrusted proposer behind schema validation and application-owned authority checks.
 
-## Current Status
+## Production Validation
 
-**Deterministic reliability core, evaluation harness, Gradio demo, and bounded LLM adapter implemented.**
+The final project passed **171 automated tests** and a formal **16-scenario multi-agent reliability evaluation** spanning normal operation, missing information, conflicting information, failed agents, misleading agents, and a centralized baseline comparison.
 
-The automated test suite covers healthy operation, fault injection, trust transitions, bounded recovery, consensus, audit metrics, role containment, centralized baseline comparison, runtime secret gates, and UI construction.
+The public Gradio demo presents the system as a fictional financial-services valuation-control case and visibly walks work through:
+
+1. two independent Evidence Reviewers,
+2. two independent Impact Analysts,
+3. two independent Verifiers,
+4. the application-owned reliability and consensus layer.
+
+The demo also includes a bounded live AI analyst using Hugging Face Inference Providers. Model output must pass the same application-owned schema, evidence, role-authority, and publication boundaries before it is accepted.
+
+The core pattern is:
+
+> **Detect → Distrust → Corroborate → Substitute → Recover → Escalate**
 
 See [EVALUATION.md](EVALUATION.md) for the formal evaluation method and human-review rubric.
 
