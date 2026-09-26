@@ -30,6 +30,7 @@ APP_CSS = """
 def demo_callback(name):
     view = run_demo_scenario(name)
     return (
+        view["walkthrough"],
         view["story"],
         view["executive"],
         view["team"],
@@ -88,6 +89,13 @@ with gr.Blocks(
         )
         run_button = gr.Button("Simulate this scenario", variant="primary")
 
+        gr.Markdown(
+            "### Follow the work\n"
+            "This section shows what each agent actually produced and how the "
+            "application treated that work."
+        )
+        walkthrough = gr.Markdown()
+        gr.Markdown("---")
         story = gr.Markdown()
 
         with gr.Accordion(
@@ -147,6 +155,7 @@ with gr.Blocks(
             consensus = gr.JSON()
 
         outputs = [
+            walkthrough,
             story,
             executive,
             team,
