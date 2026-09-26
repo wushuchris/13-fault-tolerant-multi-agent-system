@@ -44,7 +44,7 @@ with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
     gr.Markdown(
         "# Fault-Tolerant Multi-Agent System\n"
         "### Can an AI team keep working safely when one of its members fails or gives a bad answer?\n\n"
-        "This demo deliberately breaks members of a six-agent operations team and "
+        "This demo deliberately breaks members of a six-agent financial-services AI team and "
         "shows how the surrounding software detects the problem, limits the bad "
         "agent's authority, recovers when possible, and asks a human when it cannot "
         "recover safely.\n\n"
@@ -57,7 +57,7 @@ with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
             "## The business case\n"
             f"{BUSINESS_CASE}\n\n"
             "**The AI team:** two agents confirm the facts, two independently analyze "
-            "the operational impact, and two independently verify the recommendation. "
+            "the valuation impact, and two independently verify the recommendation. "
             "Choose something to break and watch what the system does."
         )
         scenario = gr.Dropdown(
@@ -184,7 +184,7 @@ with gr.Blocks(title="Fault-Tolerant Multi-Agent System") as demo:
             "## Now use a real language model\n"
             "The Story Demo is deterministic so failures are reproducible. This tab "
             "calls a real hosted language model for the **Analysis Agent** job. "
-            "The model can draft an analysis, but it cannot choose its identity, "
+            "The model can draft an analysis of the pricing discrepancy, but it cannot choose its identity, "
             "change trust, recover the mission, or approve publication."
         )
         live_status = gr.Markdown(value=live_inference_status())

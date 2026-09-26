@@ -18,11 +18,13 @@ A second design principle carries forward from the earlier multi-agent projects:
 
 ## System
 
-The MVP models a synthetic operations-intelligence team with redundant capabilities:
+The MVP models a synthetic financial-services operations-intelligence team handling an end-of-day portfolio pricing anomaly with redundant capabilities:
 
 - Evidence Agent A / B
 - Analysis Agent A / B
 - Verification Agent A / B
+
+The synthetic business case asks whether a suspect primary market-data price should influence end-of-day portfolio valuation when independent pricing and issuer-event evidence do not corroborate the move. The bounded healthy recommendation is to quarantine the suspect price, use an approved secondary source under documented controls, and investigate the discrepancy before restoring the primary feed.
 
 The system includes:
 
@@ -127,7 +129,7 @@ GitHub deployment configuration:
 Hugging Face Space runtime configuration:
 
 - Space secret **HF_TOKEN** — runtime inference credential.
-- Space variable **MODEL_ID** — model identifier used by the optional Live Specialist tab.
+- Space variable **MODEL_ID** — model identifier used by the optional Live AI Analyst tab.
 
 **HF_DEPLOY_TOKEN** and **HF_TOKEN** serve different purposes and must remain separate.
 

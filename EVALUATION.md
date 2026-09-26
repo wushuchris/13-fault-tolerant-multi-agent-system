@@ -3,6 +3,23 @@
 Agent 13 uses a deterministic evaluation harness so reliability behavior can be
 replayed and compared without depending on model randomness.
 
+## Synthetic financial-services case
+
+The evaluation uses a public-safe fictional asset-management scenario. A primary
+market-data vendor reports synthetic security NSTR-01 at $82.00, 18 percent below
+the prior validated price. An approved secondary source reports $99.20,
+independent market indications cluster near $99 to $100, and no issuer filing,
+corporate action, or default notice explains the move. An approved backup price
+is available under a documented valuation-exception process.
+
+The healthy bounded recommendation is **MITIGATE**: quarantine the suspect
+primary price, use the approved secondary price under the exception control,
+and investigate the discrepancy before restoring the primary feed to automated
+use.
+
+This scenario is synthetic and demonstrates AI reliability and valuation-control
+workflow behavior; it is not investment advice or a production pricing policy.
+
 ## Automated scenario matrix
 
 The formal scenario suite contains 16 scenarios:

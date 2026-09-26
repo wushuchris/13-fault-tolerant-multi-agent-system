@@ -88,7 +88,8 @@ def test_misleading_output_contains_known_false_synthetic_claim() -> None:
     product = run.observation.work_product
 
     assert product is not None
-    assert "interlocks failed" in product.summary.lower()
+    assert "default notice" in product.summary.lower()
+    assert "no approved alternate price" in product.summary.lower()
     assert product.conclusion == "pause"
 
 

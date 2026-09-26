@@ -26,9 +26,10 @@ def test_demo_exposes_expected_business_scenarios() -> None:
 
 
 def test_business_case_is_explained_in_plain_language() -> None:
-    assert "fulfillment center" in BUSINESS_CASE
+    assert "asset manager" in BUSINESS_CASE
     assert "18%" in BUSINESS_CASE
-    assert "backup conveyor" in BUSINESS_CASE
+    assert "$99.20" in BUSINESS_CASE
+    assert "corporate action" in BUSINESS_CASE
 
 
 def test_healthy_demo_tells_a_complete_story() -> None:
@@ -60,6 +61,7 @@ def test_misleading_demo_explains_quarantine_in_plain_english() -> None:
     assert analysis_a[5] == "yes"
     assert "Quarantined" in story_row[2]
     assert "zero publication authority" in view["story"]
+    assert "default notice" in view["story"]
     assert "completed the mission safely" in view["story"]
 
 

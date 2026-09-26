@@ -61,7 +61,7 @@ def packet_for(task_id: str, agent_id: str) -> SpecialistTaskPacket:
 
 def valid_analysis_payload() -> dict:
     return {
-        "summary": "Capacity is reduced, but a bounded mitigation path exists.",
+        "summary": "The primary price is uncorroborated, while an approved secondary price supports a bounded valuation-control response.",
         "recommendation": "mitigate",
         "evidence_sufficient": True,
         "supports_upstream": None,
