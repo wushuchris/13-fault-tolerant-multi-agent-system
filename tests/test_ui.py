@@ -164,3 +164,51 @@ def test_app_uses_narrow_reading_width() -> None:
     import app
 
     assert "max-width: 900px" in app.APP_CSS
+
+
+
+def test_healthy_walkthrough_shows_all_six_agents_and_three_gates() -> None:
+    view = run_demo_scenario("Healthy Team — Nothing Fails")
+    walkthrough = view["walkthrough"]
+
+    for agent_name in (
+        "Evidence Agent A",
+        "Evidence Agent B",
+        "Analysis Agent A",
+        "Analysis Agent B",
+        "Verification Agent A",
+        "Verification Agent B",
+    ):
+        assert agent_name in walkthrough
+
+    assert "Phase 1 — Independent evidence review" in walkthrough
+    assert "Phase 2 — Independent impact analysis" in walkthrough
+    assert "Phase 3 — Independent verification" in walkthrough
+    assert "Gate 1" in walkthrough
+    assert "Gate 2" in walkthrough
+    assert "Gate 3" in walkthrough
+    assert "Publication:** ✅ Allowed" in walkthrough
+
+
+def test_misleading_walkthrough_shows_bad_work_replacement_and_verification() -> None:
+    view = run_demo_scenario("Misleading Agent — Quarantine and Replace")
+    walkthrough = view["walkthrough"]
+
+    assert "default notice" in walkthrough
+    assert "Trust falls from 1.00 to 0.30" in walkthrough
+    assert "🚫 Quarantined" in walkthrough
+    assert "Analysis Agent B" in walkthrough
+    assert "✅ Used for recovery" in walkthrough
+    assert "Verification Agent A" in walkthrough
+    assert "Verification Agent B" in walkthrough
+    assert "QUARANTINE → SUBSTITUTE" in walkthrough
+
+
+def test_no_backup_walkthrough_visibly_stops_before_verification() -> None:
+    view = run_demo_scenario("No Backup — Stop and Ask a Human")
+    walkthrough = view["walkthrough"]
+
+    assert "Analysis Agent A" in walkthrough
+    assert "Analysis Agent B" in walkthrough
+    assert "STOP AUTOMATION → HUMAN REVIEW" in walkthrough
+    assert "Phase 3 — Independent verification" not in walkthrough
